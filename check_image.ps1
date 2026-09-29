@@ -1,0 +1,13 @@
+[void][System.Reflection.Assembly]::LoadWithPartialName('System.Drawing')
+$filePath = "C:\Users\LAPTOP\.gemini\antigravity\brain\489563c2-8a2b-45a9-92d9-62b06f89fc6e\media__1780573237888.jpg"
+$img = [System.Drawing.Bitmap]::FromFile($filePath)
+Write-Output ("Dimensions: " + $img.Width + " x " + $img.Height)
+$leftPixel = $img.GetPixel(5, [int]($img.Height / 2))
+$rightPixel = $img.GetPixel($img.Width - 5, [int]($img.Height / 2))
+$topPixel = $img.GetPixel([int]($img.Width / 2), 5)
+$bottomPixel = $img.GetPixel([int]($img.Width / 2), $img.Height - 5)
+Write-Output ("Left edge pixel: " + $leftPixel)
+Write-Output ("Right edge pixel: " + $rightPixel)
+Write-Output ("Top edge pixel: " + $topPixel)
+Write-Output ("Bottom edge pixel: " + $bottomPixel)
+$img.Dispose()

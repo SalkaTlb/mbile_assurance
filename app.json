@@ -1,0 +1,82 @@
+{
+  "expo": {
+    "name": "assurance_mobile",
+    "slug": "assurance_mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "assurancemobile",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.richatt.mobil",
+      "buildNumber": "11",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Localisation du lieu du sinistre.",
+        "NSLocationAlwaysUsageDescription": "Localisation du lieu du sinistre.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Localisation du lieu du sinistre."
+      }
+    },
+    "android": {
+      "package": "com.richatt.mobil",
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Autoriser l'app à accéder à votre localisation pour indiquer le lieu du sinistre.",
+          "locationAlwaysPermission": "Autoriser l'app à accéder à votre localisation pour indiquer le lieu du sinistre.",
+          "locationWhenInUsePermission": "Autoriser l'app à accéder à votre localisation pour indiquer le lieu du sinistre."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4be5f7ec-b1fe-4bb3-a199-d6c8e5349446"
+      }
+    }
+  }
+}
