@@ -10,11 +10,15 @@ const BASE_URL =
   'https://kinsman-unlovely-murky.ngrok-free.dev/api';
 const TOKEN_KEY = 'jwt_token';
 
-// En-tête obligatoire avec le palier GRATUIT d'ngrok : sans lui, ngrok renvoie
-// une page HTML d'avertissement — dépourvue d'en-têtes CORS — au lieu de relayer
-// la requête vers Odoo. Sur le web, cette page casse à la fois le parsing JSON et
-// la vérification CORS. Inoffensif sur natif et pour un backend non-ngrok.
-const NGROK_HEADER: Record<string, string> = { 'ngrok-skip-browser-warning': 'true' };
+// En-tête utile UNIQUEMENT avec le palier gratuit d'ngrok (utilisé en dev) : sans
+// lui, ngrok renvoie une page HTML d'avertissement — dépourvue d'en-têtes CORS —
+// au lieu de relayer la requête vers Odoo, ce qui casse le web.
+// On ne l'ajoute QUE pour une URL ngrok : sur le vrai serveur de prod, envoyer un
+// en-tête inconnu ferait échouer le preflight CORS si sa liste blanche est stricte.
+const IS_NGROK = BASE_URL.includes('ngrok');
+const NGROK_HEADER: Record<string, string> = IS_NGROK
+  ? { 'ngrok-skip-browser-warning': 'true' }
+  : {};
 
 // En-têtes pour les appels non authentifiés (login, inscription, OTP...).
 function jsonHeaders(): Record<string, string> {
