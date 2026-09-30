@@ -74,6 +74,7 @@
     },
     "extra": {
       "router": {},
+      "apiBaseUrl": "https://kinsman-unlovely-murky.ngrok-free.dev/api",
       "eas": {
         "projectId": "4be5f7ec-b1fe-4bb3-a199-d6c8e5349446"
       }

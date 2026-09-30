@@ -1,9 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-   
-const BASE_URL = 'https://kinsman-unlovely-murky.ngrok-free.dev/api'; 
-const TOKEN_KEY = 'jwt_token'; 
+
+// L'URL de l'API est lue depuis app.json (expo.extra.apiBaseUrl) afin de ne plus
+// coder en dur un tunnel ngrok éphémère. Fallback conservé pour compatibilité.
+const BASE_URL =
+  (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)?.apiBaseUrl ??
+  'https://kinsman-unlovely-murky.ngrok-free.dev/api';
+const TOKEN_KEY = 'jwt_token';
+
+// En-tête obligatoire avec le palier GRATUIT d'ngrok : sans lui, ngrok renvoie
+// une page HTML d'avertissement — dépourvue d'en-têtes CORS — au lieu de relayer
+// la requête vers Odoo. Sur le web, cette page casse à la fois le parsing JSON et
+// la vérification CORS. Inoffensif sur natif et pour un backend non-ngrok.
+const NGROK_HEADER: Record<string, string> = { 'ngrok-skip-browser-warning': 'true' };
+
+// En-têtes pour les appels non authentifiés (login, inscription, OTP...).
+function jsonHeaders(): Record<string, string> {
+  return { 'Content-Type': 'application/json', ...NGROK_HEADER };
+}
   
 type ApiEnvelope<T> = {
   status: 'success' | 'error';
@@ -125,6 +141,7 @@ async function getAuthHeaders() {
   const token = await AsyncStorage.getItem(TOKEN_KEY);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...NGROK_HEADER,
   };
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -135,9 +152,7 @@ async function getAuthHeaders() {
 export async function registerUser(payload: RegisterPayload) {
   const response = await fetch(`${BASE_URL}/signup_mobile`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: jsonHeaders(),
     body: JSON.stringify(payload),
   });
 
@@ -156,9 +171,7 @@ export async function loginUser(payload: LoginPayload) {
   try {
     response = await fetch(`${BASE_URL}/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: jsonHeaders(),
       body: JSON.stringify(payload),
     });
   } catch (networkError) {
@@ -203,9 +216,7 @@ export async function logoutUser() {
 export async function forgotPassword(phone: string) {
   const response = await fetch(`${BASE_URL}/auth/forgot_password`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: jsonHeaders(),
     body: JSON.stringify({ phone }),
   });
 
@@ -221,7 +232,7 @@ export async function forgotPassword(phone: string) {
 export async function sendSignupOtp(phone: string) {
   const response = await fetch(`${BASE_URL}/auth/send_signup_otp`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: jsonHeaders(),
     body: JSON.stringify({ phone }),
   });
   const rawResult = await response.json();
@@ -235,9 +246,7 @@ export async function sendSignupOtp(phone: string) {
 export async function verifyOtp(phone: string, code: string) {
   const response = await fetch(`${BASE_URL}/auth/verify_otp`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: jsonHeaders(),
     body: JSON.stringify({ phone, code }),
   });
 
@@ -253,9 +262,7 @@ export async function verifyOtp(phone: string, code: string) {
 export async function resetPassword(phone: string, code: string, newPassword: string) {
   const response = await fetch(`${BASE_URL}/auth/reset_password`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: jsonHeaders(),
     body: JSON.stringify({ phone, code, new_password: newPassword }),
   });
 
