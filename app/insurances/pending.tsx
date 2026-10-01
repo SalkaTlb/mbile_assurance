@@ -17,6 +17,7 @@ import {
 import { CustomAlert as Alert } from '@/components/CustomAlert';
 
 import { renouvelerCodePaiement, verifierPaiement } from '@/lib/api';
+import { toFrenchDate } from '@/lib/dateUtils';
 import { getLanguage, isArabic, translations } from '@/lib/i18n';
 
 export default function PendingInsuranceScreen() {
@@ -64,6 +65,8 @@ export default function PendingInsuranceScreen() {
     setCopied(true);
     if (Platform.OS === 'android') ToastAndroid.show(t.copied, ToastAndroid.SHORT);
     setTimeout(() => setCopied(false), 2500);
+    const n = translations[language].newInsurance;
+    Alert.alert(n.paymentStepsTitle, n.paymentStepsMsg);
   };
 
   const handleRenouveler = async () => {
@@ -176,7 +179,7 @@ export default function PendingInsuranceScreen() {
             <MaterialCommunityIcons name="calendar-check" size={20} color="#F4BA42" />
             <View style={[styles.detailText, isRtl && { alignItems: 'flex-end' }]}>
               <Text style={[styles.detailLabel, isRtl && styles.rtlText]}>{t.effectiveDate}</Text>
-              <Text style={[styles.detailValue, isRtl && styles.rtlText]}>{effective_date}</Text>
+              <Text style={[styles.detailValue, isRtl && styles.rtlText]}>{toFrenchDate(effective_date)}</Text>
             </View>
           </View>
 

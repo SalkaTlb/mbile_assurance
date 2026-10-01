@@ -42,6 +42,7 @@ interface InsuranceDocument {
   status: DocStatus;
   insuranceId?: number;
   insuranceNumber?: string;
+  matricule?: string;
   claimId?: number;
   claimNumber?: string;
 }
@@ -169,16 +170,24 @@ export default function DocumentsScreen() {
       ]);
 
       // getMyInsurances retourne { insurances, pendingQuotes }
-      const insurancesList = (insurancesResult as any)?.insurances ?? [];
+      // Dédoublonnage : le backend peut renvoyer plusieurs fois le même contrat.
+      const seen = new Set<string>();
+      const insurancesList = ((insurancesResult as any)?.insurances ?? []).filter((ins: any) => {
+        const key = ins.insurance_number || String(ins.id);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
       const formattedInsurances: InsuranceDocument[] = insurancesList.map((ins: any) => ({
         id: `ins_${ins.id}`,
-        name: `Attestation - N° ${ins.insurance_number}`,
+        name: ins.matricule || `N° ${ins.insurance_number}`,
         category: 'attestation',
         issuedOn: ins.date_effet,
         status: ins.etat === 'expired' ? 'expired' : 'valid',
         insuranceId: ins.id,
         insuranceNumber: ins.insurance_number,
+        matricule: ins.matricule,
       }));
 
       const formattedClaims: InsuranceDocument[] = claimsList
@@ -279,9 +288,15 @@ export default function DocumentsScreen() {
       ? (doc.insuranceNumber?.replace(/\//g, '_') || doc.id)
       : (doc.claimNumber?.replace(/\//g, '_') || doc.id);
 
+    // L'attestation partagée porte le matricule du véhicule ; sur S3 on garde le
+    // n° de police dans le nom pour ne pas écraser l'attestation d'un ancien contrat.
+    const plate = doc.matricule?.replace(/[^A-Za-z0-9_-]/g, '');
     const filename = doc.category === 'attestation'
-      ? `Attestation_${sanitizedName}.pdf`
+      ? `${plate || `Attestation_${sanitizedName}`}.pdf`
       : `Recu_Sinistre_${sanitizedName}.pdf`;
+    const s3Filename = doc.category === 'attestation' && plate
+      ? `${plate}_${sanitizedName}.pdf`
+      : filename;
 
     const { uri } = await Print.printToFileAsync({
       html,
@@ -301,7 +316,7 @@ export default function DocumentsScreen() {
       });
       const s3Result = await uploadToS3(
         base64Data,
-        filename,
+        s3Filename,
         doc.category as 'attestation' | 'sinistre',
       );
       if (s3Result.success) {

@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Language, translations } from '@/lib/i18n';
 
@@ -13,8 +13,8 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.topSection}>
-        <Text style={styles.brandMain}>MEDINA</Text>
-        <Text style={styles.brandSub}>ASSURANCES SA</Text>
+        <Image source={require('@/assets/images/medina_logo.png')} style={styles.logo} resizeMode="contain" />
+        <Text style={styles.brandName}>MEDINA ASSURANCES SA</Text>
       </View>
 
       <View style={styles.card}>
@@ -49,29 +49,27 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#052A63',
+    backgroundColor: '#FFFFFF',
   },
   topSection: {
     flex: 0.45,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  brandMain: {
-    color: '#FFFFFF',
-    fontSize: 48,
+  logo: {
+    width: 190,
+    height: 190,
+  },
+  brandName: {
+    marginTop: 4,
+    color: '#052A63',
+    fontSize: 22,
     fontWeight: '800',
     letterSpacing: 1,
   },
-  brandSub: {
-    marginTop: 6,
-    color: '#F4BA42',
-    fontSize: 30,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-  },
   card: {
     flex: 0.55,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#052A63',
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
     paddingHorizontal: 24,
@@ -87,7 +85,7 @@ const styles = StyleSheet.create({
     minWidth: 90,
   },
   langText: {
-    color: '#2B2B2B',
+    color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '600',
   },
@@ -95,10 +93,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     height: 2,
     width: '100%',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#FFFFFF',
   },
   title: {
-    color: '#18233D',
+    color: '#FFFFFF',
     fontSize: 32,
     fontWeight: '700',
     marginBottom: 28,
@@ -117,7 +115,7 @@ const styles = StyleSheet.create({
   }, 
   secondaryLink: {
     marginTop: 14,
-    color: '#0B2F6A',
+    color: '#FFFFFF',
     fontSize: 16,
     textAlign: 'center',
     fontWeight: '600',

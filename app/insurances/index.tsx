@@ -1,13 +1,43 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { getMyInsurances, InsuranceItem, PendingQuote } from '@/lib/api';
 import { toFrenchDate } from '@/lib/dateUtils';
 import { getLanguage, isArabic, translations } from '@/lib/i18n';
 
-type FilterTab = 'all' | 'pending' | 'active';
+type FilterTab = 'all' | 'pending' | 'active' | 'expired';
+
+// Le backend peut renvoyer plusieurs fois le même contrat / devis, et un devis
+// reste listé « en attente » quelque temps après son paiement : on dédoublonne
+// et on masque les devis dont le véhicule a déjà un contrat actif.
+function dedupe(insurances: InsuranceItem[], quotes: PendingQuote[]) {
+  const seenIns = new Set<string>();
+  const uniqueInsurances = insurances.filter((ins) => {
+    const key = ins.insurance_number || String(ins.id);
+    if (seenIns.has(key)) return false;
+    seenIns.add(key);
+    return true;
+  });
+
+  const activePlates = new Set(
+    uniqueInsurances
+      .filter((ins) => ins.etat !== 'expired')
+      .map((ins) => ins.matricule?.trim().toUpperCase()),
+  );
+  const seenQuotes = new Set<string>();
+  const uniqueQuotes = quotes.filter((q) => {
+    if (activePlates.has(q.matricule?.trim().toUpperCase())) return false;
+    const key = `${q.matricule}|${q.duration}|${q.effective_date}|${q.total}`;
+    if (seenQuotes.has(q.quote_id) || seenQuotes.has(key)) return false;
+    seenQuotes.add(q.quote_id);
+    seenQuotes.add(key);
+    return true;
+  });
+
+  return { uniqueInsurances, uniqueQuotes };
+}
 
 export default function InsurancesScreen() {
   const router = useRouter();
@@ -21,23 +51,38 @@ export default function InsurancesScreen() {
   const [pendingQuotes, setPendingQuotes] = useState<PendingQuote[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const result = await getMyInsurances();
-        setItems(result.insurances || []);
-        setPendingQuotes(result.pendingQuotes || []);
-      } catch {
+  const load = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const result = await getMyInsurances();
+      const { uniqueInsurances, uniqueQuotes } = dedupe(result.insurances || [], result.pendingQuotes || []);
+      setItems(uniqueInsurances);
+      setPendingQuotes(uniqueQuotes);
+    } catch {
+      if (!silent) {
         setItems([]);
         setPendingQuotes([]);
-      } finally {
-        setLoading(false);
       }
-    };
-    load();
-  }, [refresh]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Recharge à chaque retour sur l'écran (ex. après un paiement) pour que le
+  // statut actif apparaisse sans devoir relancer l'app.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load, refresh]),
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load(true);
+    setRefreshing(false);
+  };
 
   /* ── Filtered by search ── */
   const query = searchQuery.toLowerCase().trim();
@@ -59,17 +104,24 @@ export default function InsurancesScreen() {
 
   const allInsurances = items.filter(matchesInsurance);
   const allPending    = pendingQuotes.filter(matchesPending);
+  const allActive     = allInsurances.filter((i) => i.etat !== 'expired');
+  const allExpired    = allInsurances.filter((i) => i.etat === 'expired');
 
   /* ── Visible by tab ── */
-  const visibleInsurances = activeTab === 'pending' ? [] : allInsurances;
-  const visiblePending    = activeTab === 'active'  ? [] : allPending;
+  const visibleInsurances =
+    activeTab === 'pending' ? [] :
+    activeTab === 'active'  ? allActive :
+    activeTab === 'expired' ? allExpired :
+    allInsurances;
+  const visiblePending = activeTab === 'all' || activeTab === 'pending' ? allPending : [];
   const isEmpty = visibleInsurances.length === 0 && visiblePending.length === 0;
 
   /* ── Tab definitions ── */
   const tabs: { id: FilterTab; labelFr: string; labelAr: string; count: number; color: string }[] = [
     { id: 'all',     labelFr: 'Tous',       labelAr: 'الكل',       count: allInsurances.length + allPending.length, color: '#F4BA42' },
     { id: 'pending', labelFr: 'En attente', labelAr: 'في الانتظار', count: allPending.length,    color: '#FA8C16' },
-    { id: 'active',  labelFr: 'Actif',      labelAr: 'نشط',        count: allInsurances.length, color: '#52C41A' },
+    { id: 'active',  labelFr: 'Actif',      labelAr: 'نشط',        count: allActive.length,     color: '#52C41A' },
+    { id: 'expired', labelFr: 'Expirées',   labelAr: 'منتهية',     count: allExpired.length,    color: '#FF4D4F' },
   ];
 
   return (
@@ -116,7 +168,7 @@ export default function InsurancesScreen() {
               style={[styles.tab, isActive && { borderColor: tab.color, backgroundColor: tab.color + '18' }]}
               onPress={() => setActiveTab(tab.id)}
             >
-              <Text style={[styles.tabLabel, isActive && { color: tab.color }]}>
+              <Text style={[styles.tabLabel, isActive && { color: tab.color }]} numberOfLines={1} adjustsFontSizeToFit>
                 {isRtl ? tab.labelAr : tab.labelFr}
               </Text>
               <View style={[styles.tabBadge, { backgroundColor: isActive ? tab.color : '#1E3A5F' }]}>
@@ -128,13 +180,16 @@ export default function InsurancesScreen() {
       </View>
 
       {/* ── Content ── */}
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F4BA42" />}
+      >
         {loading ? (
           <Text style={styles.helperText}>{t.loading}</Text>
         ) : isEmpty ? (
           <View style={styles.emptyState}>
             <MaterialCommunityIcons
-              name={activeTab === 'pending' ? 'clock-alert-outline' : activeTab === 'active' ? 'shield-check-outline' : 'shield-off-outline'}
+              name={activeTab === 'pending' ? 'clock-alert-outline' : activeTab === 'active' ? 'shield-check-outline' : activeTab === 'expired' ? 'shield-remove-outline' : 'shield-off-outline'}
               size={56}
               color="#2A4A6B"
             />
@@ -305,21 +360,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 16,
     marginBottom: 12,
-    gap: 8,
+    gap: 6,
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
+    paddingHorizontal: 2,
     height: 38,
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: '#1E3A5F',
     backgroundColor: '#071A2F',
   },
-  tabLabel: { color: '#6E7A8A', fontSize: 13, fontWeight: '700' },
+  tabLabel: { color: '#6E7A8A', fontSize: 12, fontWeight: '700', flexShrink: 1 },
   tabBadge: {
     minWidth: 20,
     height: 20,

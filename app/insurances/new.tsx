@@ -6,10 +6,32 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, ToastAndroid, View } from 'react-native';
 
-import { calculerMontantDevis, getCoverageDurations, SelectOption, verifierPaiement } from '@/lib/api';
+import { calculerMontantDevis, getCoverageDurations, getMyInsurances, SelectOption, verifierPaiement } from '@/lib/api';
 import { getLanguage, isArabic, translations } from '@/lib/i18n';
 
 type DropdownField = 'duration' | null;
+
+// Date d'effet au plus tôt le lendemain (J+1), à minuit.
+function tomorrow(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 1);
+  return d;
+}
+
+const pad = (n: number) => n.toString().padStart(2, '0');
+// Affichage utilisateur : JJ/MM/AAAA
+const toDisplayDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+// Format attendu par l'API : MM/DD/YYYY
+const toApiDate = (d: Date) => `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+
+// Fin de couverture : date d'effet + N mois - 1 jour.
+function expiryFrom(effective: Date, months: number): Date {
+  const d = new Date(effective);
+  d.setMonth(d.getMonth() + months);
+  d.setDate(d.getDate() - 1);
+  return d;
+}
 
 export default function NewInsuranceScreen() {
   const router = useRouter();
@@ -23,7 +45,8 @@ export default function NewInsuranceScreen() {
   const [matricule, setMatricule] = useState('');
   const [duration, setDuration] = useState<number | null>(null);
   const [phone, setPhone] = useState('');
-  const [effectiveDate, setEffectiveDate] = useState(new Date());
+  const [effectiveDate, setEffectiveDate] = useState(tomorrow);
+  const minDate = tomorrow();
   const [showDatePicker, setShowDatePicker] = useState(false);
   
   const [calculating, setCalculating] = useState(false);
@@ -35,6 +58,7 @@ export default function NewInsuranceScreen() {
   const [retrying, setRetrying] = useState(false);
 
   const [quoteResult, setQuoteResult] = useState<{ total_amount: number; quote_id: string; paymentCode?: string } | null>(null);
+  const [vehicleLabel, setVehicleLabel] = useState<string | null>(null);
   const [durationOptions, setDurationOptions] = useState<{ id: number; label: string; duration: number }[]>([]);
 
   useEffect(() => {
@@ -72,6 +96,7 @@ export default function NewInsuranceScreen() {
         ToastAndroid.show(t.codeCopied, ToastAndroid.SHORT);
       }
       setTimeout(() => setCopied(false), 2500);
+      Alert.alert(t.paymentStepsTitle, t.paymentStepsMsg);
     } catch {
       // silently ignore
     }
@@ -100,13 +125,12 @@ export default function NewInsuranceScreen() {
       setErrorMsg(null);
       
       const selectedDuration = durationOptions.find(d => d.id === duration);
-      const formattedDate = `${(effectiveDate.getMonth() + 1).toString().padStart(2, '0')}/${effectiveDate.getDate().toString().padStart(2, '0')}/${effectiveDate.getFullYear()}`;
 
       const res = await calculerMontantDevis({
         matricule,
         duration_list: [selectedDuration ? selectedDuration.duration : 0],
         client_phone: phone,
-        effective_date: formattedDate,
+        effective_date: toApiDate(effectiveDate),
       });
 
       const qId = res.quote_id ?? res.quotes?.[0]?.quote_id ?? '';
@@ -124,6 +148,15 @@ export default function NewInsuranceScreen() {
         } else {
           setRichatpayDown(false);
         }
+        // La réponse du devis ne contient pas le véhicule : on le relit dans les devis en attente.
+        getMyInsurances()
+          .then(({ pendingQuotes }) => {
+            const q = pendingQuotes.find((p) => p.quote_id === qId)
+              ?? pendingQuotes.find((p) => p.matricule?.toUpperCase() === matricule.trim().toUpperCase());
+            const label = [q?.marque, q?.modele].filter(Boolean).join(' ');
+            if (label) setVehicleLabel(label);
+          })
+          .catch(() => {});
       } else {
         setErrorMsg(translateError(res?.msg || res?.message || res?.code || "Erreur lors de la génération du code de paiement"));
       }
@@ -170,7 +203,7 @@ export default function NewInsuranceScreen() {
             <Text style={[styles.label, isRtl && styles.rtlText]}>{t.effectiveDateLabel}</Text>
             <Pressable style={[styles.inputWithIcon, isRtl && styles.rtlRow]} onPress={() => !quoteResult && setShowDatePicker(!showDatePicker)} disabled={!!quoteResult}>
               <Text style={[styles.selectText, isRtl && styles.rtlText]}>
-                {`${(effectiveDate.getMonth() + 1).toString().padStart(2, '0')}/${effectiveDate.getDate().toString().padStart(2, '0')}/${effectiveDate.getFullYear()}`}
+                {toDisplayDate(effectiveDate)}
               </Text>
               <MaterialCommunityIcons name="calendar" size={18} color="#8B94A7" />
             </Pressable>
@@ -201,6 +234,7 @@ export default function NewInsuranceScreen() {
                     <View style={styles.iosCalendarContainer}>
                       <DateTimePicker
                         value={effectiveDate}
+                        minimumDate={minDate}
                         mode="date"
                         display="inline"
                         locale="fr_FR"
@@ -220,6 +254,7 @@ export default function NewInsuranceScreen() {
               showDatePicker && (
                 <DateTimePicker
                   value={effectiveDate}
+                  minimumDate={minDate}
                   mode="date"
                   display="spinner"
                   locale="fr_FR"
@@ -254,6 +289,18 @@ export default function NewInsuranceScreen() {
               <View style={styles.successArea}>
                 <View style={styles.quoteCard}>
                   <Text style={[styles.quoteTitle, isRtl && styles.rtlText]}>{t.summary}</Text>
+                  {vehicleLabel && (
+                    <View style={[styles.quoteRow, styles.quoteDetailRow, isRtl && styles.rtlRow]}>
+                      <Text style={[styles.quoteLabel, isRtl && styles.rtlText]}>{t.vehicle}</Text>
+                      <Text style={styles.quoteValue}>{vehicleLabel}</Text>
+                    </View>
+                  )}
+                  <View style={[styles.quoteRow, styles.quoteDetailRow, isRtl && styles.rtlRow]}>
+                    <Text style={[styles.quoteLabel, isRtl && styles.rtlText]}>{t.expiryDate}</Text>
+                    <Text style={styles.quoteValue}>
+                      {toDisplayDate(expiryFrom(effectiveDate, durationOptions.find(d => d.id === duration)?.duration ?? 0))}
+                    </Text>
+                  </View>
                   <View style={[styles.quoteRow, isRtl && styles.rtlRow]}>
                     <Text style={[styles.quoteLabel, isRtl && styles.rtlText]}>{t.totalToPay}</Text>
                     <Text style={styles.totalValue}>{quoteResult.total_amount.toLocaleString()} MRU</Text>
@@ -277,7 +324,7 @@ export default function NewInsuranceScreen() {
                             matricule,
                             duration_list: [durationOptions.find(d => d.id === duration)?.duration ?? 0],
                             client_phone: phone,
-                            effective_date: `${(effectiveDate.getMonth() + 1).toString().padStart(2, '0')}/${effectiveDate.getDate().toString().padStart(2, '0')}/${effectiveDate.getFullYear()}`,
+                            effective_date: toApiDate(effectiveDate),
                           });
                           if (res?.success && res.paymentCode) {
                             setQuoteResult(prev => prev ? { ...prev, paymentCode: res.paymentCode! } : prev);
@@ -436,6 +483,8 @@ const styles = StyleSheet.create({
   quoteTitle: { color: '#12335E', fontSize: 18, fontWeight: '700', marginBottom: 10 },
   quoteRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   quoteLabel: { color: '#6D7890', fontSize: 16 },
+  quoteDetailRow: { marginBottom: 8 },
+  quoteValue: { color: '#12335E', fontSize: 16, fontWeight: '700', flexShrink: 1, textAlign: 'right' },
   totalValue: { color: '#12335E', fontSize: 22, fontWeight: '900' },
   codeContainer: { padding: 20, backgroundColor: '#F0F5FF', borderRadius: 12, borderWidth: 1, borderColor: '#ADC6FF', alignItems: 'center' },
   payInstruction: { fontSize: 14, color: '#2F54EB', fontWeight: '700', marginBottom: 10 },

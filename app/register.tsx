@@ -69,7 +69,7 @@ export default function RegisterScreen() {
       setLoading(true);
       await sendSignupOtp(phone);
       setSuccessMsg(t.otpSent);
-      setResendTimer(300);
+      setResendTimer(120);
       setStep(2);
     } catch (err: any) {
       setErrorMsg(err.message || t.registerFailed);
@@ -86,7 +86,7 @@ export default function RegisterScreen() {
       setLoading(true);
       await sendSignupOtp(phone);
       setSuccessMsg(t.otpSent);
-      setResendTimer(300);
+      setResendTimer(120);
     } catch (err: any) {
       setErrorMsg(err.message || t.registerFailed);
     } finally {

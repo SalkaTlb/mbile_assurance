@@ -71,7 +71,10 @@ export default function InsuranceDetailScreen() {
 
     const html = generateAttestationHtml(result.data);
     const sanitized = insurance.insurance_number.replace(/\//g, '_');
-    const filename = `Attestation_${sanitized}.pdf`;
+    // Fichier partagé nommé d'après le matricule ; nom S3 unique par contrat.
+    const plate = insurance.matricule?.replace(/[^A-Za-z0-9_-]/g, '');
+    const filename = plate ? `${plate}.pdf` : `Attestation_${sanitized}.pdf`;
+    const s3Filename = plate ? `${plate}_${sanitized}.pdf` : filename;
 
     // Generate PDF (A4)
     const { uri } = await Print.printToFileAsync({
@@ -92,7 +95,7 @@ export default function InsuranceDetailScreen() {
       const base64Data = await FileSystem.readAsStringAsync(destUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      const s3Result = await uploadToS3(base64Data, filename, 'attestation');
+      const s3Result = await uploadToS3(base64Data, s3Filename, 'attestation');
       if (s3Result.success) {
         s3Url = s3Result.url;
       }
@@ -121,7 +124,7 @@ export default function InsuranceDetailScreen() {
       const { uri, s3Url } = await buildPdfUri();
 
       if (s3Url) {
-        setViewDoc({ url: s3Url, name: `Attestation - N° ${insurance.insurance_number}` });
+        setViewDoc({ url: s3Url, name: insurance.matricule || `N° ${insurance.insurance_number}` });
       } else {
         // Fallback local uniquement si S3 a échoué (mode hors-ligne)
         if (await Sharing.isAvailableAsync()) {
@@ -162,7 +165,7 @@ export default function InsuranceDetailScreen() {
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
         UTI: 'com.adobe.pdf',           // iOS UTI
-        dialogTitle: `Attestation ${insurance.insurance_number}`,
+        dialogTitle: insurance.matricule || `Attestation ${insurance.insurance_number}`,
       });
 
     } catch (error: any) {
