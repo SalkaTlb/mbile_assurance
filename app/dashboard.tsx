@@ -1,7 +1,7 @@
 import { FontAwesome6, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getLanguage, isArabic, translations } from '@/lib/i18n';
 
@@ -35,13 +35,13 @@ export default function DashboardScreen() {
           onPress={() => router.push({ pathname: '/profile', params: { lang: language } })}
         >
           <View style={styles.profileIconCircle}>
-            <MaterialCommunityIcons name="account" size={32} color="#F4BA42" />
+            <MaterialCommunityIcons name="account" size={32} color="#052A63" />
           </View>
         </Pressable>
 
         <View style={styles.header}>
-          <Text style={styles.brandMain}>MEDINA</Text>
-          <Text style={styles.brandSub}>ASSURANCES SA</Text>
+          <Image source={require('@/assets/images/medina_logo.png')} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.brandName}>MEDINA ASSURANCES SA</Text>
           <Text style={[styles.slogan, isRtl && styles.rtlText]}>{t.slogan}</Text>
         </View>
 
@@ -89,7 +89,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#001026', // Deeper dark blue
+    backgroundColor: '#FFFFFF',
   },
   content: {
     flex: 1,
@@ -99,25 +99,22 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
   },
-  brandMain: {
-    color: '#FFFFFF',
-    fontSize: 54,
-    fontWeight: '900',
-    letterSpacing: 2,
-    lineHeight: 60,
+  logo: {
+    width: 130,
+    height: 130,
+    marginTop: -20,
   },
-  brandSub: {
-    color: '#F4BA42', // Match login gold
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    marginTop: -5,
+  brandName: {
+    color: '#052A63',
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   slogan: {
-    marginTop: 15,
-    color: '#F4BA42',
+    marginTop: 8,
+    color: '#052A63',
     fontSize: 20,
     fontWeight: '600',
     textAlign: 'center',
@@ -131,7 +128,7 @@ const styles = StyleSheet.create({
   card: {
     width: '46%',
     height: 150,
-    backgroundColor: '#071F3D', // Slightly lighter but still very dark blue
+    backgroundColor: '#052A63',
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
@@ -176,6 +173,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#F4BA42',
+    borderColor: '#052A63',
   },
 });

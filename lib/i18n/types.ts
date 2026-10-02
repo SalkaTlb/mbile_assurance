@@ -161,6 +161,10 @@ export type TranslationSchema = {
     errorVerify: string;
     errorAlreadyInsured: string;
     errorVehicleNotFound: string;
+    vehicle: string;
+    expiryDate: string;
+    paymentStepsTitle: string;
+    paymentStepsMsg: string;
   };
   profile: {
     title: string;
