@@ -16,7 +16,7 @@ import {
 
 import { CustomAlert as Alert } from '@/components/CustomAlert';
 
-import { renouvelerCodePaiement, verifierPaiement } from '@/lib/api';
+import { renouvelerCodePaiement, supprimerDevis, verifierPaiement } from '@/lib/api';
 import { toFrenchDate } from '@/lib/dateUtils';
 import { getLanguage, isArabic, translations } from '@/lib/i18n';
 
@@ -56,6 +56,7 @@ export default function PendingInsuranceScreen() {
   const [renewing, setRenewing] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const totalAmount = parseFloat(total || '0');
 
@@ -127,6 +128,32 @@ export default function PendingInsuranceScreen() {
     } finally {
       setVerifying(false);
     }
+  };
+
+  const handleSupprimer = () => {
+    if (!quote_id) return;
+    Alert.alert(t.deleteConfirmTitle, t.deleteConfirmMsg, [
+      { text: t.cancel, style: 'cancel' },
+      {
+        text: t.deleteBtn,
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setDeleting(true);
+            const res = await supprimerDevis(quote_id);
+            if (res.success) {
+              router.replace({ pathname: '/insurances', params: { lang: language, refresh: Date.now().toString() } });
+            } else {
+              Alert.alert(translations[language].login.errorTitle, res.msg || t.deleteBtn);
+            }
+          } catch (e: any) {
+            Alert.alert(translations[language].login.errorTitle, e.message || (isRtl ? 'خطأ في الشبكة' : 'Erreur réseau'));
+          } finally {
+            setDeleting(false);
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -261,6 +288,17 @@ export default function PendingInsuranceScreen() {
         <Text style={[styles.helpText, isRtl && styles.rtlText]}>
           {t.helpText}
         </Text>
+
+        <Pressable
+          style={[styles.deleteBtn, deleting && { opacity: 0.7 }, isRtl && styles.rtlRow]}
+          onPress={handleSupprimer}
+          disabled={deleting}
+        >
+          {deleting
+            ? <ActivityIndicator color="#FF4D4F" size="small" />
+            : <MaterialCommunityIcons name="trash-can-outline" size={18} color="#FF4D4F" />}
+          <Text style={styles.deleteBtnText}>{t.deleteBtn}</Text>
+        </Pressable>
       </ScrollView>
 
       {/* Success Modal */}
@@ -418,6 +456,19 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 4,
   },
+
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FF4D4F',
+    marginTop: 8,
+  },
+  deleteBtnText: { color: '#FF4D4F', fontWeight: '700', fontSize: 15 },
 
   // Success Modal
   successModalBackdrop: {

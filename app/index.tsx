@@ -13,7 +13,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.topSection}>
-        <Image source={require('@/assets/images/medina_logo.png')} style={styles.logo} resizeMode="contain" />
+        <Image source={require('@/assets/images/medina_logo_app.png')} style={styles.logo} resizeMode="contain" />
         <Text style={styles.brandName}>MEDINA ASSURANCES SA</Text>
       </View>
 

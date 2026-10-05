@@ -40,8 +40,7 @@ export default function DashboardScreen() {
         </Pressable>
 
         <View style={styles.header}>
-          <Image source={require('@/assets/images/medina_logo.png')} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.brandName}>MEDINA ASSURANCES SA</Text>
+          <Image source={require('@/assets/images/medina_logo_horizontal.png')} style={styles.logo} resizeMode="contain" />
           <Text style={[styles.slogan, isRtl && styles.rtlText]}>{t.slogan}</Text>
         </View>
 
@@ -102,15 +101,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   logo: {
-    width: 130,
-    height: 130,
-    marginTop: -20,
-  },
-  brandName: {
-    color: '#052A63',
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: 1,
+    width: 280,
+    height: 104,
   },
   slogan: {
     marginTop: 8,

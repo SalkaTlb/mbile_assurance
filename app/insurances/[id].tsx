@@ -22,6 +22,7 @@ import { getGedDataPdf, getMyInsurances, InsuranceItem } from '@/lib/api';
 import { generateAttestationHtml } from '@/lib/attestationTemplate';
 import { toFrenchDate } from '@/lib/dateUtils';
 import { getLanguage, isArabic, translations } from '@/lib/i18n';
+import { insuranceStatus, STATUS_DISPLAY } from '@/lib/insuranceStatus';
 import { uploadToS3 } from '@/lib/s3Upload';
 
 type PdfAction = 'view' | 'share';
@@ -220,7 +221,7 @@ export default function InsuranceDetailScreen() {
     );
   }
 
-  const isActive = insurance.etat !== 'expired';
+  const statusDisplay = STATUS_DISPLAY[insuranceStatus(insurance.etat)];
 
   const DetailRow = ({
     label, value, icon,
@@ -254,14 +255,10 @@ export default function InsuranceDetailScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         {/* ── Status banner ── */}
-        <View style={[styles.statusBanner, { borderColor: isActive ? '#52C41A' : '#FF4D4F' }]}>
-          <MaterialCommunityIcons
-            name={isActive ? 'shield-check' : 'shield-off'}
-            size={20}
-            color={isActive ? '#52C41A' : '#FF4D4F'}
-          />
-          <Text style={[styles.statusText, { color: isActive ? '#52C41A' : '#FF4D4F' }]}>
-            {isActive ? t.statusActive : t.statusExpired}
+        <View style={[styles.statusBanner, { borderColor: statusDisplay.color }]}>
+          <MaterialCommunityIcons name={statusDisplay.icon} size={20} color={statusDisplay.color} />
+          <Text style={[styles.statusText, { color: statusDisplay.color }]}>
+            {statusDisplay[language]}
           </Text>
         </View>
 

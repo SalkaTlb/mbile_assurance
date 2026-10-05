@@ -358,5 +358,10 @@ export type TranslationSchema = {
     successBtn: string;
     renewSuccessTitle: string;
     renewSuccessMsg: string;
+    deleteBtn: string;
+    deleteConfirmTitle: string;
+    deleteConfirmMsg: string;
+    deleteSuccess: string;
+    cancel: string;
   };
 };

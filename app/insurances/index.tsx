@@ -6,6 +6,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, Vie
 import { getMyInsurances, InsuranceItem, PendingQuote } from '@/lib/api';
 import { toFrenchDate } from '@/lib/dateUtils';
 import { getLanguage, isArabic, translations } from '@/lib/i18n';
+import { insuranceStatus, STATUS_DISPLAY } from '@/lib/insuranceStatus';
 
 type FilterTab = 'all' | 'pending' | 'active' | 'expired';
 
@@ -23,7 +24,7 @@ function dedupe(insurances: InsuranceItem[], quotes: PendingQuote[]) {
 
   const activePlates = new Set(
     uniqueInsurances
-      .filter((ins) => ins.etat !== 'expired')
+      .filter((ins) => ['active', 'processing'].includes(insuranceStatus(ins.etat)))
       .map((ins) => ins.matricule?.trim().toUpperCase()),
   );
   const seenQuotes = new Set<string>();
@@ -104,12 +105,14 @@ export default function InsurancesScreen() {
 
   const allInsurances = items.filter(matchesInsurance);
   const allPending    = pendingQuotes.filter(matchesPending);
-  const allActive     = allInsurances.filter((i) => i.etat !== 'expired');
-  const allExpired    = allInsurances.filter((i) => i.etat === 'expired');
+  const allActive     = allInsurances.filter((i) => insuranceStatus(i.etat) === 'active');
+  const allExpired    = allInsurances.filter((i) => insuranceStatus(i.etat) === 'expired');
+  // Payé mais pas encore validé par l'équipe → « Traitement en cours », avec les devis en attente
+  const allProcessing = allInsurances.filter((i) => insuranceStatus(i.etat) === 'processing');
 
   /* ── Visible by tab ── */
   const visibleInsurances =
-    activeTab === 'pending' ? [] :
+    activeTab === 'pending' ? allProcessing :
     activeTab === 'active'  ? allActive :
     activeTab === 'expired' ? allExpired :
     allInsurances;
@@ -119,7 +122,7 @@ export default function InsurancesScreen() {
   /* ── Tab definitions ── */
   const tabs: { id: FilterTab; labelFr: string; labelAr: string; count: number; color: string }[] = [
     { id: 'all',     labelFr: 'Tous',       labelAr: 'الكل',       count: allInsurances.length + allPending.length, color: '#F4BA42' },
-    { id: 'pending', labelFr: 'En attente', labelAr: 'في الانتظار', count: allPending.length,    color: '#FA8C16' },
+    { id: 'pending', labelFr: 'En attente', labelAr: 'في الانتظار', count: allPending.length + allProcessing.length, color: '#FA8C16' },
     { id: 'active',  labelFr: 'Actif',      labelAr: 'نشط',        count: allActive.length,     color: '#52C41A' },
     { id: 'expired', labelFr: 'Expirées',   labelAr: 'منتهية',     count: allExpired.length,    color: '#FF4D4F' },
   ];
@@ -262,10 +265,13 @@ export default function InsurancesScreen() {
                     </Text>
                   </View>
                 )}
-                {visibleInsurances.map((item) => (
+                {visibleInsurances.map((item) => {
+                  const status = insuranceStatus(item.etat);
+                  const display = STATUS_DISPLAY[status];
+                  return (
                   <Pressable
                     key={item.id}
-                    style={[styles.card, item.etat === 'expired' && styles.expiredCard]}
+                    style={[styles.card, status === 'expired' && styles.expiredCard]}
                     onPress={() => router.push({
                       pathname: '/insurances/[id]',
                       params: { id: item.id.toString(), lang: language },
@@ -279,28 +285,15 @@ export default function InsurancesScreen() {
                     </View>
                     <Text style={styles.cardLine}>{item.marque} {item.modele}</Text>
                     <View style={styles.cardInfo}>
-                      <View style={[
-                        styles.badge,
-                        { backgroundColor: item.etat === 'expired' ? '#FF4D4F22' : '#52C41A22',
-                          borderWidth: 1,
-                          borderColor: item.etat === 'expired' ? '#FF4D4F' : '#52C41A' },
-                      ]}>
-                        <MaterialCommunityIcons
-                          name={item.etat === 'expired' ? 'shield-off-outline' : 'shield-check-outline'}
-                          size={11}
-                          color={item.etat === 'expired' ? '#FF4D4F' : '#52C41A'}
-                          style={{ marginRight: 4 }}
-                        />
-                        <Text style={[styles.badgeText, { color: item.etat === 'expired' ? '#FF4D4F' : '#52C41A' }]}>
-                          {item.etat === 'expired'
-                            ? translations[language].insuranceDetail.statusExpired
-                            : translations[language].insuranceDetail.statusActive}
-                        </Text>
+                      <View style={[styles.badge, { backgroundColor: display.color + '22', borderWidth: 1, borderColor: display.color }]}>
+                        <MaterialCommunityIcons name={display.icon} size={11} color={display.color} style={{ marginRight: 4 }} />
+                        <Text style={[styles.badgeText, { color: display.color }]}>{display[language]}</Text>
                       </View>
                       <Text style={[styles.cardLine, { fontSize: 13, opacity: 0.8 }]}>{toFrenchDate(item.date_expiration)}</Text>
                     </View>
                   </Pressable>
-                ))}
+                  );
+                })}
               </View>
             )}
           </>

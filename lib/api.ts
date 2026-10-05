@@ -317,6 +317,21 @@ export async function renouvelerCodePaiement(quote_id: string): Promise<{
   return parseEnvelope(response);
 }
 
+/** Retire un devis en attente (le serveur le masque ; refusé s'il est déjà payé). */
+export async function supprimerDevis(quote_id: string): Promise<{ success: boolean; already_paid?: boolean; msg?: string }> {
+  const response = await fetch(`${BASE_URL}/supprimer_devis`, {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ quote_id }),
+  });
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { success: false, msg: `Réponse invalide du serveur (HTTP ${response.status})` };
+  }
+}
+
 export async function abonnementAssurance(payload: CreateInsurancePayload) {
   const response = await fetch(`${BASE_URL}/abonnement_assurance`, {
     method: 'POST',

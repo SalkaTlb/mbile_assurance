@@ -358,6 +358,11 @@ export const fr: TranslationSchema = {
     successBtn: 'Voir mes assurances',
     renewSuccessTitle: 'Nouveau code généré',
     renewSuccessMsg: 'Votre nouveau code de paiement est disponible.',
+    deleteBtn: 'Supprimer ce devis',
+    deleteConfirmTitle: 'Supprimer le devis ?',
+    deleteConfirmMsg: 'Ce devis sera retiré de vos assurances. Ne payez plus avec ce code.',
+    deleteSuccess: 'Devis supprimé.',
+    cancel: 'Annuler',
   },
 };
 

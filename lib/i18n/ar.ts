@@ -358,6 +358,11 @@ export const ar: TranslationSchema = {
     successBtn: 'عرض تأميناتي',
     renewSuccessTitle: 'تم توليد رمز جديد',
     renewSuccessMsg: 'رمز الدفع الجديد الخاص بك متوفر الآن.',
+    deleteBtn: 'حذف هذه التسعيرة',
+    deleteConfirmTitle: 'حذف التسعيرة؟',
+    deleteConfirmMsg: 'ستتم إزالة هذه التسعيرة من تأميناتك. لا تدفع بهذا الرمز بعد الآن.',
+    deleteSuccess: 'تم حذف التسعيرة.',
+    cancel: 'إلغاء',
   },
 };
 
