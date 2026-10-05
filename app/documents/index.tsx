@@ -18,6 +18,7 @@ import {
 import { WebView } from 'react-native-webview';
 
 import { CustomAlert as Alert } from '@/components/CustomAlert';
+import { VehicleDocuments } from '@/components/VehicleDocuments';
 
 import {
   getClaimReceipt,
@@ -31,13 +32,14 @@ import { getLanguage, isArabic, translations } from '@/lib/i18n';
 import { uploadToS3 } from '@/lib/s3Upload';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type DocCategory = 'all' | 'attestation' | 'sinistre';
+// « Autres documents » remplace l'ancien onglet « Tous » : documents du véhicule déposés par le client.
+type DocCategory = 'others' | 'attestation' | 'sinistre';
 type DocStatus = 'valid' | 'expired';
 
 interface InsuranceDocument {
   id: string; // e.g. ins_12 or claim_3
   name: string;
-  category: DocCategory;
+  category: 'attestation' | 'sinistre';
   issuedOn: string;
   status: DocStatus;
   insuranceId?: number;
@@ -148,7 +150,7 @@ export default function DocumentsScreen() {
   const t = translations[language].documents;
 
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState<DocCategory>('all');
+  const [activeCategory, setActiveCategory] = useState<DocCategory>('others');
   const [documents, setDocuments] = useState<InsuranceDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
@@ -216,8 +218,7 @@ export default function DocumentsScreen() {
 
   const filtered = useMemo(() => {
     return documents.filter((doc) => {
-      const matchCat =
-        activeCategory === 'all' || doc.category === activeCategory;
+      const matchCat = doc.category === activeCategory;
       const query = search.trim().toLowerCase();
       const matchSearch =
         query === '' ||
@@ -400,7 +401,7 @@ export default function DocumentsScreen() {
       {(() => {
         const allDocs = documents;
         const tabs: { key: DocCategory; label: string; color: string; count: number }[] = [
-          { key: 'all',         label: t.categoryAll,          color: '#F4BA42', count: allDocs.length },
+          { key: 'others',      label: t.categoryOthers,       color: '#F4BA42', count: -1 },
           { key: 'attestation', label: t.categoryAttestations, color: '#52C41A', count: allDocs.filter(d => d.category === 'attestation').length },
           { key: 'sinistre',    label: t.categorySinistres,    color: '#FA8C16', count: allDocs.filter(d => d.category === 'sinistre').length },
         ];
@@ -417,12 +418,14 @@ export default function DocumentsScreen() {
                   ]}
                   onPress={() => setActiveCategory(tab.key)}
                 >
-                  <Text style={[styles.categoryTabText, active && { color: tab.color }]}>
+                  <Text style={[styles.categoryTabText, active && { color: tab.color }]} numberOfLines={1} adjustsFontSizeToFit>
                     {tab.label}
                   </Text>
-                  <View style={[styles.categoryTabBadge, { backgroundColor: active ? tab.color : '#1E3A5F' }]}>
-                    <Text style={styles.categoryTabBadgeText}>{tab.count}</Text>
-                  </View>
+                  {tab.count >= 0 && (
+                    <View style={[styles.categoryTabBadge, { backgroundColor: active ? tab.color : '#1E3A5F' }]}>
+                      <Text style={styles.categoryTabBadgeText}>{tab.count}</Text>
+                    </View>
+                  )}
                 </Pressable>
               );
             })}
@@ -441,7 +444,9 @@ export default function DocumentsScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         >
-          {filtered.length === 0 ? (
+          {activeCategory === 'others' ? (
+            <VehicleDocuments t={t} isRtl={isRtl} />
+          ) : filtered.length === 0 ? (
             <View style={styles.emptyContainer}>
               <MaterialCommunityIcons
                 name="file-search-outline"
