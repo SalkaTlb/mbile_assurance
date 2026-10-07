@@ -1,4 +1,4 @@
-export type Language = 'fr' | 'ar';
+export type Language = "fr" | "ar";
 
 export type TranslationSchema = {
   home: {
@@ -61,6 +61,9 @@ export type TranslationSchema = {
     support: string;
     settings: string;
     welcome: string;
+    comingSoonTitle: string;
+    comingSoonMessage: string;
+    ok: string;
   };
   insurances: {
     title: string;

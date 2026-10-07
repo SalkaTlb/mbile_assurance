@@ -1,36 +1,36 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 
 // L'URL de l'API est lue depuis app.json (expo.extra.apiBaseUrl) afin de ne plus
 // coder en dur un tunnel ngrok éphémère. Fallback conservé pour compatibilité.
 const BASE_URL =
-  (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)?.apiBaseUrl ??
-  'https://kinsman-unlovely-murky.ngrok-free.dev/api';
-const TOKEN_KEY = 'jwt_token';
+  (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)
+    ?.apiBaseUrl ?? "https://kinsman-unlovely-murky.ngrok-free.dev/api";
+const TOKEN_KEY = "jwt_token";
 
 // En-tête utile UNIQUEMENT avec le palier gratuit d'ngrok (utilisé en dev) : sans
 // lui, ngrok renvoie une page HTML d'avertissement — dépourvue d'en-têtes CORS —
 // au lieu de relayer la requête vers Odoo, ce qui casse le web.
 // On ne l'ajoute QUE pour une URL ngrok : sur le vrai serveur de prod, envoyer un
 // en-tête inconnu ferait échouer le preflight CORS si sa liste blanche est stricte.
-const IS_NGROK = BASE_URL.includes('ngrok');
+const IS_NGROK = BASE_URL.includes("ngrok");
 const NGROK_HEADER: Record<string, string> = IS_NGROK
-  ? { 'ngrok-skip-browser-warning': 'true' }
+  ? { "ngrok-skip-browser-warning": "true" }
   : {};
 
 // En-têtes pour les appels non authentifiés (login, inscription, OTP...).
 function jsonHeaders(): Record<string, string> {
-  return { 'Content-Type': 'application/json', ...NGROK_HEADER };
+  return { "Content-Type": "application/json", ...NGROK_HEADER };
 }
-  
+
 type ApiEnvelope<T> = {
-  status: 'success' | 'error';
+  status: "success" | "error";
   message: string;
-  data: T; 
-};  
-  
+  data: T;
+};
+
 export type RegisterPayload = {
   first_name: string;
   last_name: string;
@@ -71,7 +71,7 @@ export type PendingQuote = {
   payment_code: string | null;
   payment_url: string | null;
   code_expired: boolean;
-  etat: 'pending_payment';
+  etat: "pending_payment";
   etat_label: string;
   is_pending: true;
 };
@@ -130,13 +130,13 @@ async function parseEnvelope<T>(response: Response): Promise<T> {
   } catch (e) {
     throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`);
   }
-  
+
   if (result.jsonrpc && result.result !== undefined) {
     return result.result as T;
   }
-  
+
   if (!response.ok) {
-    throw new Error(result?.message || result?.msg || 'Request failed');
+    throw new Error(result?.message || result?.msg || "Request failed");
   }
   return result as T;
 }
@@ -144,7 +144,7 @@ async function parseEnvelope<T>(response: Response): Promise<T> {
 async function getAuthHeaders() {
   const token = await AsyncStorage.getItem(TOKEN_KEY);
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...NGROK_HEADER,
   };
   if (token) {
@@ -155,7 +155,7 @@ async function getAuthHeaders() {
 
 export async function registerUser(payload: RegisterPayload) {
   const response = await fetch(`${BASE_URL}/signup_mobile`, {
-    method: 'POST',
+    method: "POST",
     headers: jsonHeaders(),
     body: JSON.stringify(payload),
   });
@@ -164,7 +164,7 @@ export async function registerUser(payload: RegisterPayload) {
   const result = rawResult.result || rawResult;
 
   if (!result.success) {
-    throw new Error(result.msg || 'Signup failed');
+    throw new Error(result.msg || "Signup failed");
   }
 
   return result;
@@ -174,32 +174,36 @@ export async function loginUser(payload: LoginPayload) {
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}/login`, {
-      method: 'POST',
+      method: "POST",
       headers: jsonHeaders(),
       body: JSON.stringify(payload),
     });
   } catch (networkError) {
-    throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion internet.');
+    throw new Error(
+      "Impossible de joindre le serveur. Vérifiez votre connexion internet.",
+    );
   }
 
-  const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    throw new Error('Le serveur est temporairement indisponible. Réessayez plus tard.');
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      "Le serveur est temporairement indisponible. Réessayez plus tard.",
+    );
   }
 
   const rawResult = await response.json();
   const result = rawResult.result || rawResult;
 
   if (!result.success) {
-    throw new Error(result.msg || 'Login failed');
+    throw new Error(result.msg || "Login failed");
   }
 
   if (result.token) {
     await AsyncStorage.setItem(TOKEN_KEY, result.token);
   }
-  
+
   if (result.name) {
-    await AsyncStorage.setItem('user_name', result.name);
+    await AsyncStorage.setItem("user_name", result.name);
   }
 
   return result;
@@ -207,7 +211,7 @@ export async function loginUser(payload: LoginPayload) {
 
 export async function logoutUser() {
   const response = await fetch(`${BASE_URL}/logout`, {
-    method: 'POST',
+    method: "POST",
     headers: await getAuthHeaders(),
     body: JSON.stringify({}),
   });
@@ -219,7 +223,7 @@ export async function logoutUser() {
 
 export async function forgotPassword(phone: string) {
   const response = await fetch(`${BASE_URL}/auth/forgot_password`, {
-    method: 'POST',
+    method: "POST",
     headers: jsonHeaders(),
     body: JSON.stringify({ phone }),
   });
@@ -228,28 +232,28 @@ export async function forgotPassword(phone: string) {
   const result = rawResult.result || rawResult;
 
   if (!result.success) {
-    throw new Error(result.msg || 'Request failed');
+    throw new Error(result.msg || "Request failed");
   }
   return result;
 }
 
 export async function sendSignupOtp(phone: string) {
   const response = await fetch(`${BASE_URL}/auth/send_signup_otp`, {
-    method: 'POST',
+    method: "POST",
     headers: jsonHeaders(),
     body: JSON.stringify({ phone }),
   });
   const rawResult = await response.json();
   const result = rawResult.result || rawResult;
   if (!result.success) {
-    throw new Error(result.msg || 'Erreur envoi OTP');
+    throw new Error(result.msg || "Erreur envoi OTP");
   }
   return result;
 }
 
 export async function verifyOtp(phone: string, code: string) {
   const response = await fetch(`${BASE_URL}/auth/verify_otp`, {
-    method: 'POST',
+    method: "POST",
     headers: jsonHeaders(),
     body: JSON.stringify({ phone, code }),
   });
@@ -258,14 +262,18 @@ export async function verifyOtp(phone: string, code: string) {
   const result = rawResult.result || rawResult;
 
   if (!result.success) {
-    throw new Error(result.msg || 'OTP Verification failed');
+    throw new Error(result.msg || "OTP Verification failed");
   }
   return result;
 }
 
-export async function resetPassword(phone: string, code: string, newPassword: string) {
+export async function resetPassword(
+  phone: string,
+  code: string,
+  newPassword: string,
+) {
   const response = await fetch(`${BASE_URL}/auth/reset_password`, {
-    method: 'POST',
+    method: "POST",
     headers: jsonHeaders(),
     body: JSON.stringify({ phone, code, new_password: newPassword }),
   });
@@ -274,20 +282,25 @@ export async function resetPassword(phone: string, code: string, newPassword: st
   const result = rawResult.result || rawResult;
 
   if (!result.success) {
-    throw new Error(result.msg || 'Reset password failed');
+    throw new Error(result.msg || "Reset password failed");
   }
   return result;
 }
 
-export async function getMyInsurances(): Promise<{ insurances: InsuranceItem[]; pendingQuotes: PendingQuote[] }> {
+export async function getMyInsurances(): Promise<{
+  insurances: InsuranceItem[];
+  pendingQuotes: PendingQuote[];
+}> {
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}/get_my_assurances`, {
-      method: 'GET',
+      method: "GET",
       headers: await getAuthHeaders(),
     });
   } catch {
-    throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion internet.');
+    throw new Error(
+      "Impossible de joindre le serveur. Vérifiez votre connexion internet.",
+    );
   }
 
   const result = await parseEnvelope<{
@@ -310,7 +323,7 @@ export async function renouvelerCodePaiement(quote_id: string): Promise<{
   msg?: string;
 }> {
   const response = await fetch(`${BASE_URL}/renouveler_code_paiement`, {
-    method: 'POST',
+    method: "POST",
     headers: await getAuthHeaders(),
     body: JSON.stringify({ quote_id }),
   });
@@ -319,7 +332,7 @@ export async function renouvelerCodePaiement(quote_id: string): Promise<{
 
 export async function abonnementAssurance(payload: CreateInsurancePayload) {
   const response = await fetch(`${BASE_URL}/abonnement_assurance`, {
-    method: 'POST',
+    method: "POST",
     headers: await getAuthHeaders(),
     body: JSON.stringify(payload),
   });
@@ -329,31 +342,33 @@ export async function abonnementAssurance(payload: CreateInsurancePayload) {
 
 export async function getInsuranceQuote(payload: QuotePayload) {
   const response = await fetch(`${BASE_URL}/insurance/quote`, {
-    method: 'POST',
+    method: "POST",
     headers: await getAuthHeaders(),
     body: JSON.stringify(payload),
   });
 
   const result = await parseEnvelope<ApiEnvelope<QuoteResponse>>(response);
 
-  if (result.status === 'error') {
+  if (result.status === "error") {
     throw new Error(result.message);
   }
 
   return result;
 }
 
-export async function calculerMontantDevis(payload: CalculateExternalQuotePayload) {
+export async function calculerMontantDevis(
+  payload: CalculateExternalQuotePayload,
+) {
   const response = await fetch(`${BASE_URL}/calculer_le_montant_du_devis`, {
-    method: 'POST',
+    method: "POST",
     headers: await getAuthHeaders(),
     body: JSON.stringify(payload),
   });
 
-  return await parseEnvelope<{ 
-    success: boolean; 
-    total_amount?: number; 
-    paymentCode?: string; 
+  return await parseEnvelope<{
+    success: boolean;
+    total_amount?: number;
+    paymentCode?: string;
     quote_id?: string;
     msg?: string;
     message?: string;
@@ -365,7 +380,7 @@ export async function calculerMontantDevis(payload: CalculateExternalQuotePayloa
 
 export async function getCoverageDurations() {
   const response = await fetch(`${BASE_URL}/coverage_durations`, {
-    method: 'POST',
+    method: "POST",
     headers: await getAuthHeaders(),
     body: JSON.stringify({}),
   });
@@ -374,22 +389,34 @@ export async function getCoverageDurations() {
   const result = rawResult.result || rawResult;
 
   if (result.success && result.durations) {
-    return result.durations as { id: number; label: string; duration: number; type: string }[];
+    return result.durations as {
+      id: number;
+      label: string;
+      duration: number;
+      type: string;
+    }[];
   }
   return [];
 }
 
 export async function getPaymentCode(quoteId: string) {
-  const response = await fetch(`${BASE_URL}/generate_payment_code?quote_id=${quoteId}`, {
-    method: 'GET',
-    headers: await getAuthHeaders(),
-  });
-  return parseEnvelope<{ success: boolean; paymentCode?: string; msg?: string }>(response);
+  const response = await fetch(
+    `${BASE_URL}/generate_payment_code?quote_id=${quoteId}`,
+    {
+      method: "GET",
+      headers: await getAuthHeaders(),
+    },
+  );
+  return parseEnvelope<{
+    success: boolean;
+    paymentCode?: string;
+    msg?: string;
+  }>(response);
 }
 
 export async function getVehiculeTypes() {
   const response = await fetch(`${BASE_URL}/vehicule-types`, {
-    method: 'GET',
+    method: "GET",
     headers: await getAuthHeaders(),
   });
   return parseEnvelope<SelectOption[]>(response);
@@ -397,7 +424,7 @@ export async function getVehiculeTypes() {
 
 export async function getUsages() {
   const response = await fetch(`${BASE_URL}/usages`, {
-    method: 'GET',
+    method: "GET",
     headers: await getAuthHeaders(),
   });
   return parseEnvelope<SelectOption[]>(response);
@@ -405,7 +432,7 @@ export async function getUsages() {
 
 export async function getPolicyPrices() {
   const response = await fetch(`${BASE_URL}/policy-prices`, {
-    method: 'GET',
+    method: "GET",
     headers: await getAuthHeaders(),
   });
   return parseEnvelope<SelectOption[]>(response);
@@ -413,7 +440,7 @@ export async function getPolicyPrices() {
 
 export async function getYears() {
   const response = await fetch(`${BASE_URL}/years`, {
-    method: 'GET',
+    method: "GET",
     headers: await getAuthHeaders(),
   });
   return parseEnvelope<SelectOption[]>(response);
@@ -423,7 +450,7 @@ export type ProfileData = {
   name: string;
   phone: string;
 };
- 
+
 export async function verifierPaiement(quote_id: string): Promise<{
   success: boolean;
   paid: boolean;
@@ -432,12 +459,14 @@ export async function verifierPaiement(quote_id: string): Promise<{
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}/verifier_paiement`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({ quote_id }),
     });
   } catch {
-    throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion internet.');
+    throw new Error(
+      "Impossible de joindre le serveur. Vérifiez votre connexion internet.",
+    );
   }
 
   // 503 = RichatPay inaccessible côté serveur (timeout)
@@ -446,26 +475,34 @@ export async function verifierPaiement(quote_id: string): Promise<{
     return {
       success: false,
       paid: false,
-      msg: (body as any)?.msg ?? 'Le serveur de paiement est temporairement inaccessible. Réessayez dans quelques instants.',
+      msg:
+        (body as any)?.msg ??
+        "Le serveur de paiement est temporairement inaccessible. Réessayez dans quelques instants.",
     };
   }
 
-  return parseEnvelope<{ success: boolean; paid: boolean; msg?: string }>(response);
+  return parseEnvelope<{ success: boolean; paid: boolean; msg?: string }>(
+    response,
+  );
 }
 
 export async function getUserProfile(): Promise<ProfileData | null> {
   try {
     const response = await fetch(`${BASE_URL}/profile`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({}),
     });
- 
+
     if (!response.ok) {
       return null;
     }
- 
-    const result = await parseEnvelope<{ success: boolean; data?: ProfileData; msg?: string }>(response);
+
+    const result = await parseEnvelope<{
+      success: boolean;
+      data?: ProfileData;
+      msg?: string;
+    }>(response);
     if (result.success && result.data) {
       return result.data;
     }
@@ -483,7 +520,7 @@ export type ChangePasswordPayload = {
 
 export async function changePassword(payload: ChangePasswordPayload) {
   const response = await fetch(`${BASE_URL}/profile/change_password`, {
-    method: 'POST',
+    method: "POST",
     headers: await getAuthHeaders(),
     body: JSON.stringify(payload),
   });
@@ -543,27 +580,34 @@ export type GedData = {
 };
 
 export async function getGedDataPdf(insuranceId: number) {
-  const response = await fetch(`${BASE_URL}/ged_data_pdf?insurance_id=${insuranceId}`, {
-    method: 'GET',
-    headers: await getAuthHeaders(),
-  });
+  const response = await fetch(
+    `${BASE_URL}/ged_data_pdf?insurance_id=${insuranceId}`,
+    {
+      method: "GET",
+      headers: await getAuthHeaders(),
+    },
+  );
   return parseEnvelope<{ success: boolean; data: GedData }>(response);
 }
 
-export async function downloadAndShareAttestation(insuranceId: number, insuranceNumber: string) {
+export async function downloadAndShareAttestation(
+  insuranceId: number,
+  insuranceNumber: string,
+) {
   const url = getAttestationUrl(insuranceId);
   const token = await AsyncStorage.getItem(TOKEN_KEY);
-  
-  const sanitizedNumber = insuranceNumber.replace(/\//g, '_');
-  const fileUri = FileSystem.cacheDirectory + `Attestation_${sanitizedNumber}.pdf`;
-  
+
+  const sanitizedNumber = insuranceNumber.replace(/\//g, "_");
+  const fileUri =
+    FileSystem.cacheDirectory + `Attestation_${sanitizedNumber}.pdf`;
+
   try {
     const downloadRes = await FileSystem.downloadAsync(url, fileUri, {
       headers: {
-        'Authorization': token ? `Bearer ${token}` : ''
-      }
+        Authorization: token ? `Bearer ${token}` : "",
+      },
     });
-    
+
     if (downloadRes.status === 200) {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(downloadRes.uri);
@@ -575,6 +619,20 @@ export async function downloadAndShareAttestation(insuranceId: number, insurance
     console.error("Download error:", error);
     throw error;
   }
+}
+
+export async function supprimerDevis(quoteIds: string[]): Promise<{
+  success: boolean;
+  deleted?: string[];
+  skipped_paid?: string[];
+  msg?: string;
+}> {
+  const response = await fetch(`${BASE_URL}/supprimer_devis`, {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ quote_ids: quoteIds }),
+  });
+  return parseEnvelope(response);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -651,7 +709,7 @@ export type ClaimDetail = Claim & {
 export type DeclareClaimPayload = {
   license_plate: string;
   claim_date: string;
-  claim_type: 'material' | 'bodily' | 'mixed';
+  claim_type: "material" | "bodily" | "mixed";
   claim_location?: string;
   infraction?: string;
   beneficiary_name?: string;
@@ -663,12 +721,14 @@ export async function getMyClaims(): Promise<Claim[]> {
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}/my_claims`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({}),
     });
   } catch {
-    throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion internet.');
+    throw new Error(
+      "Impossible de joindre le serveur. Vérifiez votre connexion internet.",
+    );
   }
   const rawResult = await response.json();
   const data = rawResult?.result ?? rawResult;
@@ -679,40 +739,44 @@ export async function getMyClaims(): Promise<Claim[]> {
   // Si success=false sans données → l'utilisateur n'a peut-être aucun sinistre
   // On retourne une liste vide au lieu de lancer une erreur
   if (!data?.success) {
-    const msg: string = (data?.msg ?? '').toLowerCase();
+    const msg: string = (data?.msg ?? "").toLowerCase();
     // Messages indiquant simplement "aucun résultat" → liste vide
     if (
-      msg.includes('no claim') ||
-      msg.includes('aucun sinistre') ||
-      msg.includes('not found') ||
-      msg.includes('introuvable') ||
-      msg === ''
+      msg.includes("no claim") ||
+      msg.includes("aucun sinistre") ||
+      msg.includes("not found") ||
+      msg.includes("introuvable") ||
+      msg === ""
     ) {
       return [];
     }
     // Vraie erreur (token invalide, serveur, etc.)
-    throw new Error(data?.msg ?? 'Erreur lors de la récupération des sinistres.');
+    throw new Error(
+      data?.msg ?? "Erreur lors de la récupération des sinistres.",
+    );
   }
 
   return data.claims ?? [];
 }
-
 
 /** Récupère le détail complet d'un sinistre */
 export async function getClaimDetail(claim_id: number): Promise<ClaimDetail> {
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}/claim_detail`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({ claim_id }),
     });
   } catch {
-    throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion internet.');
+    throw new Error(
+      "Impossible de joindre le serveur. Vérifiez votre connexion internet.",
+    );
   }
   const rawResult = await response.json();
   const data = rawResult?.result ?? rawResult;
-  if (!data?.success) throw new Error(data?.msg ?? 'Erreur lors du chargement du sinistre.');
+  if (!data?.success)
+    throw new Error(data?.msg ?? "Erreur lors du chargement du sinistre.");
   return data.claim;
 }
 
@@ -731,12 +795,14 @@ export async function declareClaim(payload: DeclareClaimPayload): Promise<{
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}/declare_claim`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify(payload),
     });
   } catch {
-    throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion internet.');
+    throw new Error(
+      "Impossible de joindre le serveur. Vérifiez votre connexion internet.",
+    );
   }
   const rawResult = await response.json();
   return rawResult?.result ?? rawResult;
@@ -745,7 +811,7 @@ export async function declareClaim(payload: DeclareClaimPayload): Promise<{
 /** Fonction utilitaire pour parser une erreur axios/fetch */
 export function parseApiError(error: unknown): string {
   if (error instanceof Error) return error.message;
-  return 'Erreur inconnue';
+  return "Erreur inconnue";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -770,29 +836,33 @@ export type ClaimReceipt = {
 };
 
 /** Récupère les informations du reçu de dépôt d'un sinistre */
-export async function getClaimReceipt(claim_id: number): Promise<{ success: boolean; receipt: ClaimReceipt; msg?: string }> {
+export async function getClaimReceipt(
+  claim_id: number,
+): Promise<{ success: boolean; receipt: ClaimReceipt; msg?: string }> {
   let response: Response;
   try {
     // Send as Odoo JSON-RPC envelope — compatible with both type='json' and type='http' routes
     response = await fetch(`${BASE_URL}/claim_receipt`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'call',
+        jsonrpc: "2.0",
+        method: "call",
         id: 1,
         params: { claim_id },
       }),
     });
   } catch (networkError) {
-    throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion internet.');
+    throw new Error(
+      "Impossible de joindre le serveur. Vérifiez votre connexion internet.",
+    );
   }
 
   const text = await response.text();
-  if (!text || text.trim().startsWith('<')) {
+  if (!text || text.trim().startsWith("<")) {
     throw new Error(
       `Le serveur a retourné une réponse inattendue (HTTP ${response.status}). ` +
-      `Vérifiez que le backend Odoo est bien démarré.`
+        `Vérifiez que le backend Odoo est bien démarré.`,
     );
   }
 
@@ -800,7 +870,9 @@ export async function getClaimReceipt(claim_id: number): Promise<{ success: bool
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error(`Réponse JSON invalide du serveur: ${text.substring(0, 120)}`);
+    throw new Error(
+      `Réponse JSON invalide du serveur: ${text.substring(0, 120)}`,
+    );
   }
 
   // Unwrap Odoo JSON-RPC envelope if present (type='json' routes wrap in .result)
@@ -812,8 +884,8 @@ export async function getClaimReceipt(claim_id: number): Promise<{ success: bool
 
 export type S3UploadUrlResponse = {
   success: boolean;
-  upload_url?: string;   // Pre-signed PUT URL (valid 5 min)
-  public_url?: string;   // Final HTTPS URL of the stored document
+  upload_url?: string; // Pre-signed PUT URL (valid 5 min)
+  public_url?: string; // Final HTTPS URL of the stored document
   s3_key?: string;
   msg?: string;
 };
@@ -827,15 +899,15 @@ export type S3UploadUrlResponse = {
  */
 export async function getS3UploadUrl(
   filename: string,
-  category: 'sinistres' | 'attestations',
+  category: "sinistres" | "attestations",
 ): Promise<S3UploadUrlResponse> {
   const headers = await getAuthHeaders();
   const response = await fetch(`${BASE_URL}/s3_upload_url`, {
-    method: 'POST',
+    method: "POST",
     headers,
     body: JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'call',
+      jsonrpc: "2.0",
+      method: "call",
       id: 1,
       params: { filename, category },
     }),
@@ -846,7 +918,9 @@ export async function getS3UploadUrl(
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error(`Réponse invalide du serveur S3: ${text.substring(0, 120)}`);
+    throw new Error(
+      `Réponse invalide du serveur S3: ${text.substring(0, 120)}`,
+    );
   }
 
   // Unwrap Odoo JSON-RPC envelope
@@ -860,11 +934,14 @@ export async function getS3UploadUrl(
  */
 export async function ensureImagePickerDirectory(): Promise<void> {
   try {
-    const cacheDir = FileSystem.cacheDirectory + 'ImagePicker/';
+    const cacheDir = FileSystem.cacheDirectory + "ImagePicker/";
     const dirInfo = await FileSystem.getInfoAsync(cacheDir);
     if (!dirInfo.exists) {
       await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
-      console.log("[FileSystem] Created ImagePicker cache directory:", cacheDir);
+      console.log(
+        "[FileSystem] Created ImagePicker cache directory:",
+        cacheDir,
+      );
     }
   } catch (err) {
     console.error("[FileSystem] Failed to ensure ImagePicker directory:", err);
@@ -875,18 +952,21 @@ export async function ensureImagePickerDirectory(): Promise<void> {
  * Uploads a local image file to S3 using a pre-signed URL.
  * Returns the final public URL of the uploaded image.
  */
-export async function uploadImageToS3(uri: string, filename: string): Promise<string> {
+export async function uploadImageToS3(
+  uri: string,
+  filename: string,
+): Promise<string> {
   // 1. Obtenir l'URL pré-signée depuis Odoo
-  const res = await getS3UploadUrl(filename, 'sinistres');
+  const res = await getS3UploadUrl(filename, "sinistres");
   if (!res.success || !res.upload_url || !res.public_url) {
-    throw new Error(res.msg || 'Failed to get S3 upload URL');
+    throw new Error(res.msg || "Failed to get S3 upload URL");
   }
 
   console.log("[S3 Upload] Original URI:", uri);
 
   // 2. Toujours copier le fichier dans le répertoire cache de l'application pour contourner les restrictions d'accès Android
   const dest = FileSystem.cacheDirectory + filename;
-  const sourceUri = uri.startsWith('file://') ? uri : `file://${uri}`;
+  const sourceUri = uri.startsWith("file://") ? uri : `file://${uri}`;
 
   try {
     const fileInfo = await FileSystem.getInfoAsync(sourceUri);
@@ -898,16 +978,23 @@ export async function uploadImageToS3(uri: string, filename: string): Promise<st
   let localUri = sourceUri;
   try {
     // S'assurer que le répertoire destination existe avant la copie
-    const destDirInfo = await FileSystem.getInfoAsync(FileSystem.cacheDirectory!);
+    const destDirInfo = await FileSystem.getInfoAsync(
+      FileSystem.cacheDirectory!,
+    );
     if (!destDirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(FileSystem.cacheDirectory!, { intermediates: true });
+      await FileSystem.makeDirectoryAsync(FileSystem.cacheDirectory!, {
+        intermediates: true,
+      });
     }
 
     await FileSystem.copyAsync({ from: sourceUri, to: dest });
     localUri = dest;
     console.log("[S3 Upload] Successfully copied to:", dest);
   } catch (copyErr) {
-    console.error("[S3 Upload] FileSystem.copyAsync failed, trying base64 fallback:", copyErr);
+    console.error(
+      "[S3 Upload] FileSystem.copyAsync failed, trying base64 fallback:",
+      copyErr,
+    );
 
     // Fallback : lire en base64 puis réécrire dans cacheDirectory
     // Résout le cas Android où le répertoire ImagePicker a été nettoyé par l'OS
@@ -921,22 +1008,26 @@ export async function uploadImageToS3(uri: string, filename: string): Promise<st
       localUri = dest;
       console.log("[S3 Upload] Base64 fallback succeeded, written to:", dest);
     } catch (b64Err) {
-      console.error("[S3 Upload] Base64 fallback also failed, using sourceUri:", b64Err);
+      console.error(
+        "[S3 Upload] Base64 fallback also failed, using sourceUri:",
+        b64Err,
+      );
       // En dernier recours, tenter avec l'URI d'origine
     }
   }
 
   // 3. Upload binaire natif directement vers S3 (sans Authorization header)
   const uploadResult = await FileSystem.uploadAsync(res.upload_url, localUri, {
-    httpMethod: 'PUT',
+    httpMethod: "PUT",
     uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-    headers: { 'Content-Type': 'image/jpeg' },
+    headers: { "Content-Type": "image/jpeg" },
   });
 
   if (uploadResult.status < 200 || uploadResult.status >= 300) {
-    throw new Error(`S3 upload failed with status ${uploadResult.status}: ${uploadResult.body?.substring(0, 200)}`);
+    throw new Error(
+      `S3 upload failed with status ${uploadResult.status}: ${uploadResult.body?.substring(0, 200)}`,
+    );
   }
 
   return res.public_url;
 }
-

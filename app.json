@@ -27,7 +27,8 @@
       "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
@@ -83,8 +84,9 @@
       "router": {},
       "apiBaseUrl": "http://147.79.100.124:8069/api",
       "eas": {
-        "projectId": "4be5f7ec-b1fe-4bb3-a199-d6c8e5349446"
+        "projectId": "b2960fa0-ef21-4641-bc66-5d9318b01548"
       }
-    }
+    },
+    "owner": "salkatalebs-team"
   }
 }
