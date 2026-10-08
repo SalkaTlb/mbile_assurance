@@ -899,7 +899,8 @@ export type S3UploadUrlResponse = {
  */
 export async function getS3UploadUrl(
   filename: string,
-  category: "sinistres" | "attestations",
+  category: "sinistres" | "attestations" | "personnels",
+  contentType?: string,
 ): Promise<S3UploadUrlResponse> {
   const headers = await getAuthHeaders();
   const response = await fetch(`${BASE_URL}/s3_upload_url`, {
@@ -909,7 +910,7 @@ export async function getS3UploadUrl(
       jsonrpc: "2.0",
       method: "call",
       id: 1,
-      params: { filename, category },
+      params: { filename, category, content_type: contentType },
     }),
   });
 
@@ -922,10 +923,79 @@ export async function getS3UploadUrl(
       `Réponse invalide du serveur S3: ${text.substring(0, 120)}`,
     );
   }
+  return parsed?.result ?? parsed;
+}
 
-  // Unwrap Odoo JSON-RPC envelope
-  const result = parsed?.result ?? parsed;
-  return result;
+// ─── DOCUMENTS PERSONNELS (S3 + Odoo) ────────────────────────────────────────
+
+export type PersonalDocument = {
+  id: number;
+  name: string;
+  url: string;
+  s3_key: string;
+  mime_type: string;
+  file_size: number;
+  created_on: string;
+};
+
+export async function uploadPersonalFileToS3(
+  uri: string,
+  filename: string,
+  mimeType: string,
+): Promise<{ url: string; key: string }> {
+  const res = await getS3UploadUrl(filename, "personnels", mimeType);
+  if (!res.success || !res.upload_url || !res.public_url) {
+    throw new Error(res.msg || "Impossible d'obtenir l'URL d'envoi S3.");
+  }
+  const up = await FileSystem.uploadAsync(res.upload_url, uri, {
+    httpMethod: "PUT",
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    headers: { "Content-Type": mimeType },
+  });
+  if (up.status < 200 || up.status >= 300) {
+    throw new Error(`Échec de l'envoi S3 (${up.status})`);
+  }
+  return { url: res.public_url, key: res.s3_key ?? "" };
+}
+
+export async function getPersonalDocuments(): Promise<PersonalDocument[]> {
+  const response = await fetch(`${BASE_URL}/personal_documents`, {
+    method: "GET",
+    headers: await getAuthHeaders(),
+  });
+  const result = await parseEnvelope<{
+    success: boolean;
+    documents?: PersonalDocument[];
+  }>(response);
+  return result.success ? (result.documents ?? []) : [];
+}
+
+export async function addPersonalDocument(payload: {
+  name: string;
+  url: string;
+  s3_key: string;
+  mime_type: string;
+  file_size: number;
+}) {
+  const response = await fetch(`${BASE_URL}/personal_documents/add`, {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return parseEnvelope<{
+    success: boolean;
+    document?: PersonalDocument;
+    msg?: string;
+  }>(response);
+}
+
+export async function deletePersonalDocument(id: number) {
+  const response = await fetch(`${BASE_URL}/personal_documents/delete`, {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ id }),
+  });
+  return parseEnvelope<{ success: boolean; msg?: string }>(response);
 }
 
 /**
