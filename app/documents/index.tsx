@@ -5,7 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Print from "expo-print";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -367,6 +367,25 @@ export default function DocumentsScreen() {
 
   // ── Documents personnels : import / suppression ──────────────────────────────
 
+  const pickingRef = useRef(false);
+
+  // Close the sheet, wait for the modal to fully disappear, then run the picker
+  const runAfterSheetClosed = (fn: () => Promise<void>) => {
+    if (pickingRef.current) return; // ignore double taps
+    pickingRef.current = true;
+    setAddSheet(false);
+    setTimeout(
+      async () => {
+        try {
+          await fn();
+        } finally {
+          pickingRef.current = false;
+        }
+      },
+      Platform.OS === "ios" ? 700 : 0,
+    );
+  };
+
   const savePersonalFile = async (
     srcUri: string,
     displayName: string,
@@ -405,7 +424,6 @@ export default function DocumentsScreen() {
   };
 
   const handleTakePhoto = async () => {
-    setAddSheet(false);
     try {
       await ensureImagePickerDirectory();
       const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -432,7 +450,6 @@ export default function DocumentsScreen() {
   };
 
   const handlePickGallery = async () => {
-    setAddSheet(false);
     try {
       await ensureImagePickerDirectory();
       const res = await ImagePicker.launchImageLibraryAsync({
@@ -454,7 +471,6 @@ export default function DocumentsScreen() {
   };
 
   const handlePickFile = async () => {
-    setAddSheet(false);
     try {
       const res = await DocumentPicker.getDocumentAsync({
         type: [
@@ -841,19 +857,19 @@ export default function DocumentsScreen() {
               {
                 icon: "camera-outline",
                 label: isRtl ? "التقاط صورة" : "Prendre une photo",
-                onPress: handleTakePhoto,
+                onPress: () => runAfterSheetClosed(handleTakePhoto),
               },
               {
                 icon: "image-multiple-outline",
                 label: isRtl ? "من المعرض" : "Choisir dans la galerie",
-                onPress: handlePickGallery,
+                onPress: () => runAfterSheetClosed(handlePickGallery),
               },
               {
                 icon: "file-upload-outline",
                 label: isRtl
                   ? "ملف (PDF, DOCX)"
                   : "Importer un fichier (PDF, DOCX)",
-                onPress: handlePickFile,
+                onPress: () => runAfterSheetClosed(handlePickFile),
               },
             ].map((o) => (
               <Pressable

@@ -11,7 +11,7 @@
  * No AWS credentials in the mobile app. No external crypto library needed.
  */
 
-import { getS3UploadUrl } from '@/lib/api';
+import { getS3UploadUrl } from "@/lib/api";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -31,9 +31,9 @@ export interface S3UploadResult {
  * "attestation" → "attestations" | "sinistre" → "sinistres"
  */
 export function buildS3Category(
-  category: 'attestation' | 'sinistre',
-): 'attestations' | 'sinistres' {
-  return category === 'attestation' ? 'attestations' : 'sinistres';
+  category: "attestation" | "sinistre",
+): "attestations" | "sinistres" {
+  return category === "attestation" ? "attestations" : "sinistres";
 }
 
 // ─── Main upload function ─────────────────────────────────────────────────────
@@ -48,16 +48,21 @@ export function buildS3Category(
 export async function uploadToS3(
   base64Data: string,
   filename: string,
-  category: 'attestation' | 'sinistre',
+  category: "attestation" | "sinistre",
 ): Promise<S3UploadResult> {
   try {
     // Step 1 — Get a pre-signed PUT URL from the Odoo server
     const s3Category = buildS3Category(category);
-    const urlResponse = await getS3UploadUrl(filename, s3Category);
+    const urlResponse = await getS3UploadUrl(
+      filename,
+      s3Category,
+      "application/pdf",
+    );
 
     if (!urlResponse.success || !urlResponse.upload_url) {
-      const errMsg = urlResponse.msg || 'Impossible d\'obtenir l\'URL d\'upload S3.';
-      console.warn('[S3] Pre-signed URL error:', errMsg);
+      const errMsg =
+        urlResponse.msg || "Impossible d'obtenir l'URL d'upload S3.";
+      console.warn("[S3] Pre-signed URL error:", errMsg);
       return { success: false, error: errMsg };
     }
 
@@ -73,31 +78,33 @@ export async function uploadToS3(
     // Step 3 — PUT directly to S3 using the pre-signed URL
     //           No Authorization header needed — the signature is in the URL itself
     const response = await fetch(upload_url, {
-      method: 'PUT',
+      method: "PUT",
       headers: {
-        'Content-Type': 'application/pdf',
+        "Content-Type": "application/pdf",
       },
       body: bytes.buffer as ArrayBuffer,
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('[S3] Upload PUT failed:', response.status, errText);
+      console.error("[S3] Upload PUT failed:", response.status, errText);
       return {
         success: false,
         error: `S3 PUT ${response.status}: ${errText.slice(0, 200)}`,
       };
     }
 
-    console.log('[S3] ✅ Upload réussi →', public_url);
+    console.log("[S3] ✅ Upload réussi →", public_url);
     return {
       success: true,
       url: public_url,
       key: s3_key,
     };
-
   } catch (err: any) {
-    console.error('[S3] Exception:', err);
-    return { success: false, error: err?.message ?? 'Erreur inconnue lors de l\'upload S3' };
+    console.error("[S3] Exception:", err);
+    return {
+      success: false,
+      error: err?.message ?? "Erreur inconnue lors de l'upload S3",
+    };
   }
 }

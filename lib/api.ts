@@ -953,7 +953,9 @@ export async function uploadPersonalFileToS3(
     headers: { "Content-Type": mimeType },
   });
   if (up.status < 200 || up.status >= 300) {
-    throw new Error(`Échec de l'envoi S3 (${up.status})`);
+    throw new Error(
+      `Échec de l'envoi S3 (${up.status}) ${up.body?.substring(0, 300) ?? ""}`,
+    );
   }
   return { url: res.public_url, key: res.s3_key ?? "" };
 }
